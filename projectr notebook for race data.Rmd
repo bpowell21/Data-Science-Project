@@ -363,14 +363,6 @@ map('county', "pennsylvania", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 ```
 
-```{r}
-#Goal: Plot relationships between counties based on race votes
-#Example: if Blacks voted one way in a wisconsin county, how do these votes comapre in other counties
-
-nbpop = 0.01*race['Black']*race['Population'], race["White"]
-
-#scatterplot(race)
-```
 
 ```{r}
 
