@@ -29,7 +29,7 @@ fips = county.fips
 ########## CLEANING THE WIDE VOTES DATA SET #########
 
 mpe16rwvd9 <- melt(pe16rwvd9, id=(c(1:7)), na.rm = TRUE)
-names(mpe16rwvd9)[9] = "votes"
+setnames(mpe16rwvd9, old = c("value", "variable"), new= c("Votes", "Candidates"))
 
 ########## CLEANING THE COUNTY FACTS DATA SET #########
 
