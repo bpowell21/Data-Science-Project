@@ -14,6 +14,7 @@ library(data.table)
 library(graphics)
 library(car)
 library(maps)
+library(plyr)
 ```
 
 ```{r}
@@ -54,23 +55,22 @@ county_facts=county_facts[, !(colnames(county_facts) %in% c("AGE135214", "LFE305
 states <- map_data("state")
 counties <- map_data("county")
 ```
+
 ```{r}
 
 race = county_facts[c(1:4, 11:18)]
 setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races"))
-#race[c(5:10)] = race[c(5:10)]*100
+
 ```
 
 ```{r}
+#Boxplot of the percentages of votes per county by racial group
 boxplot(race[c(5:10)])
+
+#Boxplot of whole number of votes per county by race
+boxplot(race2[c(5:10)])
+
 ```
-
-```{r}
-
-```
-
-
-
 
 
 ```{r}
@@ -102,6 +102,16 @@ scatterplot( race$White, race$Population , ylim= c(50000, 100000), xlim = c(0,10
 #White votes versus populations between 0-50,000
 scatterplot( race$White, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of White Votes", ylab="Population per County: 0-50,000")
 
+#Wisconsin White Voting whole number values 
+WIWhitesBoxplotSubset = subset(race2, race.sa=="WI", select = c(race.area_name, race.Population, White, race.sa))
+
+barplot(WIWhitesBoxplotSubset$White, col = rainbow(20))
+
+#California White Voting whole number values 
+CAWhitesBoxplotSubset = subset(race2, race.sa=="CA", select = c(race.area_name, race.Population, White, race.sa))
+
+barplot(CAWhitesBoxplotSubset$White, col = rainbow(20))
+
 ```
 
 ```{r}
@@ -130,6 +140,17 @@ scatterplot( race$Black, race$Population , ylim= c(50000, 100000), xlim = c(0,10
 
 #Black votes versus populations between 0-50,000
 scatterplot( race$Black, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Population per County: 0-50,000")
+
+#Wisconsin Black Voting whole number values 
+WIBlacksBoxplotSubset = subset(race2, race.sa=="WI", select = c(race.area_name, race.Population, Black, race.sa))
+
+barplot(WIBlacksBoxplotSubset$Black, col = rainbow(20))
+
+#California Black Voting whole number values 
+CABlacksBoxplotSubset = subset(race2, race.sa=="CA", select = c(race.area_name, race.Population, Black, race.sa))
+
+barplot(CABlacksBoxplotSubset$Black, col = rainbow(20))
+
 ```
 
 ```{r}
@@ -367,9 +388,63 @@ map('county', "pennsylvania", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 ```
 
+```{r}
+#Goal: Plot relationships between counties based on race votes
+#Example: if Blacks voted one way in a wisconsin county, how do these votes comapre in other counties
+
+nbpop = 0.01*race['Black']*race['Population']
+nwpop = 0.01*race['White']*race['Population']
+
+BvW =data.frame(nbpop, nwpop, county_facts["state_abbreviation"])
+
+sBvW=subset(BvW, state_abbreviation=="WI", select = c(Black, White, state_abbreviation))
+
+
+BvWBar <- ggplot(data=sBvW, aes(x=state_abbreviation))
+BvWBar + geom_bar() + 
+  xlab("") +  ylab("") + ggtitle("")
+
+#scatterplot(race)
+```
+
+```{r}
+#Subsetting Trumps, Hillary and others votes
+
+trump=subset(mpe16rwvd9, Candidates=="Donald.Trump", select = c(county, total_votes, Candidates, Votes))
+hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
+
+```
 
 ```{r}
 
+```
+
+```{r}
+#The racial values converted to decimals and then multiplied by total population to get the whole number value of votes per county by race
+bpop = 0.01*race['Black']*race['Population']
+wpop = 0.01*race['White']*race['Population']
+napop = 0.01*race['Native American']*race['Population']
+apop = 0.01*race['Asian']*race['Population']
+pipop = 0.01*race['Pacific Islander']*race['Population']
+mupop = 0.01*race['2+ Races']*race['Population']
+
+
+race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, bpop, wpop, napop, apop, pipop, mupop, race$sa, race$area_name)
+
+totBl = sum(race2$Black)
+totWh = sum(race2$White)
+totNa = sum(race2$Native.American)
+totAs = sum(race2$Asian)
+totPi = sum(race2$Pacific.Islander)
+totMu = sum(race2$X2..Races)
+
+
+#Comparison of total number of voters by race
+totals = c(totAs, totBl, totMu, totNa, totPi, totWh)
+barplot(totals, col=rainbow(6))
+
+#legend.text = c("Asian", "Black", "Multiracial", "Native American", "Pacific Islander", "White")
+#, legend.text = c("A", "B", "M", "NA", "PI", "W"),  args.legend = list(x = "bottomright")
 ```
 
 ```{r}
@@ -380,42 +455,3 @@ map('county', "pennsylvania", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 ```
 
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
