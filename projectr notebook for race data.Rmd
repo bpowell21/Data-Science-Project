@@ -22,7 +22,7 @@ county_facts <- read.csv("county_facts.csv")
 pres16results <- read.csv("pres16results.csv")
 pe16rwvd9 <- read.csv("pres.elect16.results.wide.votes.dec9.csv")
 primres <- read.csv("primary_results.csv")
-data(county.fips)
+data(county.fips, state.fips)
 fips = county.fips
 ```
 
@@ -52,9 +52,6 @@ setnames(pe16rwvd9, old = c(8:13, 15:19, 21:39), new = c("other", "other", "othe
 mpe16rwvd9 <- melt(pe16rwvd9, id=(c(1:7)), na.rm = TRUE)
 setnames(mpe16rwvd9, old = c("value", "variable"), new= c("Votes", "Candidates"))
 
-# if (!(pres16results['cand'] == 'Donald Trump' && pres16results['cand'] == 'Hillary Clinton')) {
-#   pres16results['cand'] <- 'other'
-# }
 
 
 #########CLEANING THE pres 16 RESULTS DATA ########
@@ -67,6 +64,11 @@ pres16results <- pres16results[-c(18352:18475),]
 ########## CLEANING THE COUNTY FACTS DATA SET #########
 
 county_facts=county_facts[, !(colnames(county_facts) %in% c("AGE135214", "LFE305213", "MAN450207", "WTN220207", "LND110210"))]
+
+#Removing states from county column in county facts and subsetting to a nw data frame
+stfips = data.frame(fips=1000*state.fips$fips)
+county_facts = county_facts[!(county_facts$fips %in% stfips$fips),]
+states = county_facts[(county_facts$fips %in% stfips$fips),]
 
 
 #To get longitude and latitude of counties and states
@@ -91,6 +93,22 @@ aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = 
 
 ```
 
+```{r}
+#Removing states from county column in county facts and subsetting to a new data frame
+
+stfips = data.frame(fips=1000*state.fips$fips)
+
+#Adding non-continental states to data frame: Alaska 2000, Hawaii 15000
+
+stfips[64,] <- 2000
+stfips[65,] <- 15000
+
+county_facts = county_facts[!(county_facts$fips %in% stfips$fips),]
+states = county_facts[(county_facts$fips %in% stfips$fips),]
+
+
+
+```
 
 ```{r}
 
@@ -98,6 +116,8 @@ race = county_facts[c(1:4, 11:17)]
 setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino"))
 
 ```
+
+
 
 ```{r}
 whites = race[c(3, 5)]
@@ -117,9 +137,12 @@ pipop = 0.01*race['Pacific Islander']*race['Population']
 mupop = 0.01*race['2+ Races']*race['Population']
 lpop = 0.01*race['Latino']*race['Population']
 
+
 race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, bpop, wpop, napop, apop, pipop, mupop, lpop)
 
 #issue: State fips code and totals are mixed with counties, so sums don't give real total votes
+
+
 
 #Total number of votes from each race for the enitre election
 totBl = (sum(race2$Black)-race2$Black[1])/1000000
@@ -338,9 +361,9 @@ ggplot(map.df, aes(x=long, y=lat, group=group, fill=WIBlackVotePercent)) + geom_
 classcolors <- c('red', 'cyan' )
 usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "wisconsin", fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
-map('county', "california", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
-map('county', "Colorado", fill= TRUE, col = classcolors[mpe16rwvd9$lead])map
+map('county', "California", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 map('county', "illinois", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
+
 
 ```
 
@@ -370,5 +393,4 @@ trump=subset(mpe16rwvd9, Candidates=="Donald.Trump", select = c(county, total_vo
 hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
 
 ```
-
 
