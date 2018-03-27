@@ -106,8 +106,9 @@ aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = 
 
 ```{r}
 
-race = county_facts[-1,c(1:4, 11:17)]
-setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino"))
+race = county_facts[-1,c(1:4, 11:18)]
+setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214", 'RHI825214'), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino", "White/Not Latino"))
+
 
 ```
 
@@ -121,6 +122,7 @@ asian = race[c(3, 8)]
 pacific = race[c(3, 9)]
 multi = race[c(3, 10)]
 latin = race[c(3, 11)]
+euro = race[c(3, 12)]
 
 #The racial values converted to decimals and then multiplied by total population to get the whole number value of votes per county by race
 bpop = 0.01*race['Black']*race['Population']
@@ -130,12 +132,13 @@ apop = 0.01*race['Asian']*race['Population']
 pipop = 0.01*race['Pacific Islander']*race['Population']
 mupop = 0.01*race['2+ Races']*race['Population']
 lpop = 0.01*race['Latino']*race['Population']
+euro = 0.01*race['White/Not Latino']*race['Population']
 
-race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, wpop, bpop,  napop, apop, pipop, mupop, lpop)
+#Sources list voter total of 137-139 Million
+#Black about 15 Mil, White: , 
 
-#issue: State fips code and totals are mixed with counties, so sums don't give real total votes
+race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, wpop, bpop,  napop, apop, pipop, mupop, lpop, euro)
 
-sum(race2$White)
 
 #Total number of votes from each race for the enitre election
 totBl = sum(race2$Black)/1000000
@@ -145,17 +148,21 @@ totAs = sum(race2$Asian)/1000000
 totPi = sum(race2$Pacific.Islander)/1000000
 totMu = sum(race2$X2..Races)/1000000
 totLa = sum(race2$Latino)/1000000
+totEu = sum(race2$White.Not.Latino)/1000000
 
-totals = c(totAs, totBl, totLa, totMu, totNa, totPi, totWh)
+totals = c(totAs, totBl, totLa, totMu, totNa, totPi, totWh, totEu)
 ```
 
 ```{r}
 
 #barplot of total number of voters by race
-barplot(totals, col=rainbow(7), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific", "White"), main = "Total Votes by race", xlab = 'Races', ylab = "Votes in Millions")
+barplot(totals, col=rainbow(8), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific", "White", 'White/Not Latino'), main = "Total Votes by Race/Ethnicity", xlab = 'Races', ylab = "Votes in Millions")
 
 #Same barplot, but withput the white vote for a better view of the others
-barplot(totals[-c(7)], col=rainbow(7), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific"), main = "Total Votes by race, Excluding Whites", xlab = 'Races', ylab = "Votes in Millions")
+barplot(totals[-c(7, 8)], col=rainbow(8), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific"), main = "Total Votes by Race/Ethnicity, Excluding Euro-Americans & White Latinos", xlab = 'Races', ylab = "Votes in Millions")
+
+#Same barplot, but withput the white vote for a better view of the others
+barplot(totals[-c(1:2, 4:6)], col=rainbow(8), names.arg = c("Latino", "White", 'White/Not Latino'), main = "Total Votes of Euro-Americans, Latinos & White Latinos", xlab = 'Races', ylab = "Votes in Millions")
 ```
 
 ```{r}
@@ -178,30 +185,23 @@ bar1 + geom_bar() +
 #Helps visualizing missing data
 marginplot(whites)
 
-
-
-barplot(whites$White)
-
-densityPlot(whites$White)
-qqPlot(whites$White)
-
-```
-
+barplot(race2$White)
+qqPlot(race2$White)
 
 #White votes versus all populations  
-scatterplot( race$White, race$Population , ylim= c(0, 4000000), xlim = c(0,100), xlab="Number of White Votes", ylab="Total Population per County")
+scatterplot(race2$White, race2$race.Population, xlim = c(0, 4000000), ylim = c(0,5000000),  xlab="Number of White Votes", ylab="Total Population per County")
 
 #White votes versus populations between 500,000-1,000,000
-scatterplot( race$White, race$Population , ylim= c(500000, 1000000), xlim = c(0,100), xlab="Number of White Votes", ylab="Population per County: 500,000-1,000,000")
+scatterplot(race2$White, race2$race.Population, ylim= c(500000, 1000000), xlim = c(0,1000000), xlab="Number of White Votes", ylab="Population per County: 500,000-1,000,000")
 
 #White votes versus populations between 100,000-500,000
-scatterplot( race$White, race$Population , ylim= c(100000, 500000), xlim = c(0,100), xlab="Number of White Votes", ylab="Population per County: 100,000-500,000")
+scatterplot(race2$White, race2$race.Population, ylim= c(100000, 500000), xlim = c(0,1000000), xlab="Number of White Votes", ylab="Population per County: 100,000-500,000")
 
 #White votes versus populations between 50,000-100,000
-scatterplot( race$White, race$Population , ylim= c(50000, 100000), xlim = c(0,100), xlab="Number of White Votes", ylab="Population per County: 50,000-100,000")
+scatterplot(race2$White, race2$race.Population, ylim= c(50000, 100000), xlim = c(0,100000), xlab="Number of White Votes", ylab="Population per County: 50,000-100,000")
 
 #White votes versus populations between 0-50,000
-scatterplot( race$White, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of White Votes", ylab="Population per County: 0-50,000")
+scatterplot(race2$White, race2$race.Population, ylim= c(0,50000), xlim = c(0,60000), xlab="Number of White Votes", ylab="Population per County: 0-50,000")
 
 #Wisconsin White Voting whole number values 
 WIWhitesBoxplotSubset = subset(race2, race.sa=="WI", select = c(race.area_name, race.Population, White, race.sa))
@@ -386,4 +386,5 @@ trump=subset(mpe16rwvd9, Candidates=="Donald.Trump", select = c(county, total_vo
 hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
 
 ```
+
 
