@@ -214,148 +214,72 @@ CAWhitesBoxplotSubset = subset(race2, race.sa=="CA", select = c(race.area_name, 
 barplot(CAWhitesBoxplotSubset$White, col = rainbow(20), main = "California Total Votes by County ", xlab = "Counties", ylab = "Number of Votes")
 
 #Scatterplot of the relationship between population size and race
-scatterplot(CAWhitesBoxplotSubset$White, CAWhitesBoxplotSubset$race.Population, main="California White Vote Versus Population")
-
+scatterplot(CAWhitesBoxplotSubset$White, CAWhitesBoxplotSubset$race.Population, main="California White Vote Versus Population", xlim = c(0, 300000), ylim=c(0, 400000))
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```
-
-
 
 ```{r}
-
 set.seed(1)    # for reproducible example
 map.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
-akcounties <- counties
-akcounties
+uscounties <- counties
+uscounties
 
-#This is where you'd select whatever you want to plot
-# `Obesity` is the first thing to come to mind
-# no offense meant to the people of the great state of Arkansas :)
-# it's defined as a random uniform draw between 0-100 in the 3rd line below:
 wvp= county_facts$RHI125214
 
-white_map <- data.frame(state_names=akcounties$region,                  county_names=akcounties$subregion,wvp75=wvp[1:3076])
+white_mapus <- data.frame(state_names=uscounties$region,                  county_names=uscounties$subregion,wvp75=wvp[1:3076])
 
 
 map.county <- data.table(map.county)
 setkey(map.county,region,subregion)
-white_map <- data.table(white_map)
-setkey(white_map,state_names,county_names)
-map.df      <- map.county[white_map]
+white_mapus <- data.table(white_mapus)
+setkey(white_mapus,state_names,county_names)
+map.dfus      <- map.county[white_mapus]
 
-ggplot(map.df, aes(x=long, y=lat, group=group, fill=wvp75), color = "black") + geom_polygon()+coord_map() + 
+ggplot(map.dfus, aes(x=long, y=lat, group=group, fill=wvp75), color = "black") + geom_polygon()+coord_map() + 
   borders(database = "county")
 
-```
-
-```{r}
-
-set.seed(1)    # for reproducible example
-map.county <- map_data('county')
+akmap.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
 akcounties <- counties[counties$region=="arkansas",]
 akcounties
 
-#This is where you'd select whatever you want to plot
-# `Obesity` is the first thing to come to mind
-# no offense meant to the people of the great state of Arkansas :)
-# it's defined as a random uniform draw between 0-100 in the 3rd line below:
-wvp= county_facts$RHI125214
-
 white_map <- data.frame(state_names=akcounties$region,                  county_names=akcounties$subregion,wvp75=wvp[c(1:74, 1)])
 
 
-map.county <- data.table(map.county[map.county$region=="arkansas",])
-setkey(map.county,region,subregion)
-white_map <- data.table(white_map)
-setkey(white_map,state_names,county_names)
-map.df      <- map.county[white_map]
+akmap.county <- data.table(akmap.county[akmap.county$region=="arkansas",])
+setkey(akmap.county,region,subregion)
+white_mapak <- data.table(white_map)
+setkey(white_mapak,state_names,county_names)
+map.dfak      <- akmap.county[white_mapak]
 
-ggplot(map.df, aes(x=long, y=lat, group=group, fill=wvp75)) + geom_polygon()+coord_map()
-
-```
-
-
-```{r}
+ggplot(map.dfak, aes(x=long, y=lat, group=group, fill=wvp75)) + geom_polygon()+coord_map()
 
 set.seed(1)    # for reproducible example
-map.county <- map_data('county')
-counties   <- unique(map.county[,5:6])
+wimap.county <- map_data('county')
+counties   <- unique(wimap.county[,5:6])
 wicounties <- counties[counties$region=="wisconsin",]
 wicounties
-
-wvp= county_facts$RHI125214
 
 wiwhite_map <- data.frame(state_names=wicounties$region,                  county_names=wicounties$subregion,WIWhiteVotePercent=wvp[c(1:71, 1)])
 
-map.county <- data.table(map.county[map.county$region=="wisconsin",])
-setkey(map.county,region,subregion)
+wimap.county <- data.table(map.county[map.county$region=="wisconsin",])
+setkey(wimap.county,region,subregion)
 wiwhite_map <- data.table(wiwhite_map)
 setkey(wiwhite_map,state_names,county_names)
-map.df      <- map.county[wiwhite_map]
+map.dfwi      <- wimap.county[wiwhite_map]
 
-ggplot(map.df, aes(x=long, y=lat, group=group, fill=WIWhiteVotePercent)) + geom_polygon()+coord_map()
+ggplot(map.dfwi, aes(x=long, y=lat, group=group, fill=WIWhiteVotePercent)) + geom_polygon()+coord_map()
 
 ```
 
-```{r}
-
-set.seed(1)    # for reproducible example
-map.county <- map_data('county')
-counties   <- unique(map.county[,5:6])
-wicounties <- counties[counties$region=="wisconsin",]
-wicounties
-
-bvp= county_facts$RHI225214
-
-wiwhite_map <- data.frame(state_names=wicounties$region,                  county_names=wicounties$subregion,WIBlackVotePercent=bvp[c(1:71, 1)])
-
-
-map.county <- data.table(map.county[map.county$region=="wisconsin",])
-setkey(map.county,region,subregion)
-wiwhite_map <- data.table(wiwhite_map)
-setkey(wiwhite_map,state_names,county_names)
-map.df      <- map.county[wiwhite_map]
-
-ggplot(map.df, aes(x=long, y=lat, group=group, fill=WIBlackVotePercent)) + geom_polygon()+coord_map()
-
-```
 
 ```{r}
-
+#Graphs of the democrats vs republic coutnies won
 classcolors <- c('red', 'cyan' )
 usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "wisconsin", fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "California", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
-map('county', "illinois", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
+map('county', "new york", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 
 ```
@@ -386,5 +310,6 @@ trump=subset(mpe16rwvd9, Candidates=="Donald.Trump", select = c(county, total_vo
 hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
 
 ```
+
 
 
