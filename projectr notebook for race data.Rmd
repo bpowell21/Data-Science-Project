@@ -49,9 +49,8 @@ setnames(pe16rwvd9, old = c(8:13, 15:19, 21:39), new = c("other", "other", "othe
 
 #names(pe16rwvd9)[match(c(8:13, 14:19, 21:32),names(pe16rwvd9))] <- "other"
 
-mpe16rwvd9 <- melt(pe16rwvd9, id=(c(1:7)), na.rm = TRUE)
+mpe16rwvd9 <- unique(melt(pe16rwvd9, id=(c(1:7)), na.rm = TRUE))
 setnames(mpe16rwvd9, old = c("value", "variable"), new= c("Votes", "Candidates"))
-
 
 
 #########CLEANING THE pres 16 RESULTS DATA ########
@@ -226,7 +225,7 @@ uscounties
 
 wvp= county_facts$RHI125214
 
-white_mapus <- data.frame(state_names=uscounties$region,                  county_names=uscounties$subregion,wvp75=wvp[1:3076])
+white_mapus <- data.frame(state_names=uscounties$region, county_names=uscounties$subregion, wvp75=wvp[1:3076])
 
 
 map.county <- data.table(map.county)
@@ -291,25 +290,54 @@ map('county', "new york", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 nbpop = 0.01*race['Black']*race['Population']
 nwpop = 0.01*race['White']*race['Population']
 
-BvW =data.frame(nbpop, nwpop, county_facts["state_abbreviation"])
+BvW =data.frame(nbpop, nwpop, county_facts[-1, "state_abbreviation"])
+setnames(BvW, old=c('county_facts..1...state_abbreviation..'), new=c("sa"))
 
-sBvW=subset(BvW, state_abbreviation=="WI", select = c(Black, White, state_abbreviation))
+sBvW=subset(BvW, sa=="WI", select = c(Black, White, sa))
 
 
 # BvWBar <- ggplot(data=sBvW, aes(x=state_abbreviation))
 # BvWBar + geom_bar() + 
 #   xlab("") +  ylab("") + ggtitle("")
 
-#scatterplot(race)
+scatterplot(sBvW$White, sBvW$Black, xlim = c(0, 100000), ylim = c(0, 1000))
 ```
 
 ```{r}
 #Subsetting Trumps, Hillary and others votes
+trump=subset(mpe16rwvd9[-1,], Candidates=="Donald.Trump", select = c(county, total_votes, Candidates, Votes))
+dts = data.frame(trump$Votes/trump$total_votes)
+trump = cbind(trump, percnt =dts)
 
-trump=subset(mpe16rwvd9, Candidates=="Donald.Trump", select = c(county, total_votes, Candidates, Votes))
-hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
+hillary=subset(mpe16rwvd9[-1,], Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
 
+dt=merge(trump[c(1:4)], mpe16rwvd9[c("county", "lead")], by.x = 4, by.y = 2, all.x = TRUE)
 ```
 
+```{r}
+#Showing the level of support of Donald Trump in each county.
+#Wyoming shows the lightest shade of Blue, representing the higher support for Trump
+#Arkansas shows the lowest 
 
+set.seed(1)
+map.countytrump <- map_data('county')
+counties   <- unique(map.countytrump[,5:6])
+uscounties <- counties
+
+
+dont = trump$trump.Votes.trump.total_votes
+
+trumpsupport <- data.frame(state_names=uscounties$region, county_names=uscounties$subregion, dontrus=donts[1:3076])
+
+
+map.countytrump <- data.table(map.countytrump)
+setkey(map.countytrump,region,subregion)
+trumpsupport <- data.table(trumpsupport)
+setkey(trumpsupport,state_names,county_names)
+map.dftrump      <- map.countytrump[trumpsupport]
+
+ggplot(map.dftrump, aes(x=long, y=lat, group=group, fill=dontrus), color = "black") + geom_polygon( )+coord_map() + 
+  borders(database = "county")
+
+```
 
