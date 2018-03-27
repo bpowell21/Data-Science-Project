@@ -65,10 +65,20 @@ pres16results <- pres16results[-c(18352:18475),]
 
 county_facts=county_facts[, !(colnames(county_facts) %in% c("AGE135214", "LFE305213", "MAN450207", "WTN220207", "LND110210"))]
 
-#Removing states from county column in county facts and subsetting to a nw data frame
+
+
+
 stfips = data.frame(fips=1000*state.fips$fips)
+#Adding non-continental states to data frame: Alaska 2000, Hawaii 15000
+stfips[64,] <- 2000
+stfips[65,] <- 15000
+
+#Creating the states dataframe
+statesfacts = county_facts[(county_facts$fips %in% stfips$fips),]
+statesfacts$state_abbreviation <- NULL
+
+#Removing states from county column in county facts and subsetting to a nw data frame
 county_facts = county_facts[!(county_facts$fips %in% stfips$fips),]
-states = county_facts[(county_facts$fips %in% stfips$fips),]
 
 
 #To get longitude and latitude of counties and states
@@ -93,26 +103,10 @@ aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = 
 
 ```
 
-```{r}
-#Removing states from county column in county facts and subsetting to a new data frame
-
-stfips = data.frame(fips=1000*state.fips$fips)
-
-#Adding non-continental states to data frame: Alaska 2000, Hawaii 15000
-
-stfips[64,] <- 2000
-stfips[65,] <- 15000
-
-county_facts = county_facts[!(county_facts$fips %in% stfips$fips),]
-states = county_facts[(county_facts$fips %in% stfips$fips),]
-
-
-
-```
 
 ```{r}
 
-race = county_facts[c(1:4, 11:17)]
+race = county_facts[-1,c(1:4, 11:17)]
 setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino"))
 
 ```
@@ -137,32 +131,31 @@ pipop = 0.01*race['Pacific Islander']*race['Population']
 mupop = 0.01*race['2+ Races']*race['Population']
 lpop = 0.01*race['Latino']*race['Population']
 
-
-race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, bpop, wpop, napop, apop, pipop, mupop, lpop)
+race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, wpop, bpop,  napop, apop, pipop, mupop, lpop)
 
 #issue: State fips code and totals are mixed with counties, so sums don't give real total votes
 
-
+sum(race2$White)
 
 #Total number of votes from each race for the enitre election
-totBl = (sum(race2$Black)-race2$Black[1])/1000000
-totWh = (sum(race2$White)-race2$White[1])/1000000
-totNa = (sum(race2$Native.American)-race2$Native.American)[1]/1000000
-totAs = (sum(race2$Asian)-race2$Asian[1])/1000000
-totPi = (sum(race2$Pacific.Islander)-race2$Pacific.Islander[1])/1000000
-totMu = (sum(race2$X2..Races)-race2$X2..Races[1])/1000000
-totLa = (sum(race2$Latino)-race2$Latino[1])/1000000
+totBl = sum(race2$Black)/1000000
+totWh = sum(race2$White)/1000000
+totNa = sum(race2$Native.American)/1000000
+totAs = sum(race2$Asian)/1000000
+totPi = sum(race2$Pacific.Islander)/1000000
+totMu = sum(race2$X2..Races)/1000000
+totLa = sum(race2$Latino)/1000000
 
-totals = c(totAs, totBl, totMu, totNa, totPi, totWh, totLa)
+totals = c(totAs, totBl, totLa, totMu, totNa, totPi, totWh)
 ```
 
 ```{r}
 
 #barplot of total number of voters by race
-barplot(totals, col=rainbow(7), names.arg = c("Asian", "Black", "Mixed", "Native", "Pacific", "White", "Latino"), main = "Total Votes by race", xlab = 'Races', ylab = "Votes in Millions")
+barplot(totals, col=rainbow(7), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific", "White"), main = "Total Votes by race", xlab = 'Races', ylab = "Votes in Millions")
 
 #Same barplot, but withput the white vote for a better view of the others
-barplot(totals[-c(6,7)], col=rainbow(7), names.arg = c("Asian", "Black", "Mixed", "Native", "Pacific"), main = "Total Votes by race, Excluding Whites & Latinos", xlab = 'Races', ylab = "Votes in Millions")
+barplot(totals[-c(7)], col=rainbow(7), names.arg = c("Asian", "Black", "Latino", "Mixed", "Native", "Pacific"), main = "Total Votes by race, Excluding Whites", xlab = 'Races', ylab = "Votes in Millions")
 ```
 
 ```{r}
