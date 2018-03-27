@@ -27,6 +27,23 @@ fips = county.fips
 ```
 
 ```{r}
+#Testing each data set for missingness
+#County facts
+aggr1_plotfacts <- aggr(county_facts, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('County Facts Histogram of Missing Data','Pattern'))
+
+#presidential election 2016 results
+aggr1pres <- aggr(pres16results, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Presidential Results Histogram of Missing Data','Pattern'))
+
+#wide results
+aggr1wide <- aggr(pe16rwvd9, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Wide Presidential Results Histogram of Missing Data','Pattern'))
+
+#primary dataset
+aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Primary Result Histogram of Missing Data','Pattern'))
+
+
+```
+
+```{r}
 ########## CLEANING THE WIDE VOTES DATA SET #########
 setnames(pe16rwvd9, old = c(8:13, 15:19, 21:39), new = c("other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other"))
 
@@ -35,11 +52,10 @@ setnames(pe16rwvd9, old = c(8:13, 15:19, 21:39), new = c("other", "other", "othe
 mpe16rwvd9 <- melt(pe16rwvd9, id=(c(1:7)), na.rm = TRUE)
 setnames(mpe16rwvd9, old = c("value", "variable"), new= c("Votes", "Candidates"))
 
+# if (!(pres16results['cand'] == 'Donald Trump' && pres16results['cand'] == 'Hillary Clinton')) {
+#   pres16results['cand'] <- 'other'
+# }
 
-
-########## CLEANING THE COUNTY FACTS DATA SET #########
-
-#substr(mpe16rwvd9$fips, 4,5)
 
 #########CLEANING THE pres 16 RESULTS DATA ########
 #new data frame with places if missing election data
@@ -47,6 +63,8 @@ nodata <- data.frame(pres16results[18352:18475, 1:2])
 
 #find rows where most are  cols 3:9 are NA
 pres16results <- pres16results[-c(18352:18475),]
+
+########## CLEANING THE COUNTY FACTS DATA SET #########
 
 county_facts=county_facts[, !(colnames(county_facts) %in% c("AGE135214", "LFE305213", "MAN450207", "WTN220207", "LND110210"))]
 
@@ -57,34 +75,101 @@ counties <- map_data("county")
 ```
 
 ```{r}
+#Checking missingness after cleaning
+#County facts
+aggr1_plotfacts <- aggr(county_facts, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('County Facts Histogram of Missing Data','Pattern'))
 
-race = county_facts[c(1:4, 11:18)]
-setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races"))
+#presidential election 2016 results
+aggr1pres <- aggr(pres16results, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Presidential Results Histogram of Missing Data','Pattern'))
 
+#wide results
+aggr1meltwide <- aggr(mpe16rwvd9, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Wide Presidential Results Histogram of Missing Data','Pattern'))
+
+#primary dataset
+aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Primary Result Histogram of Missing Data','Pattern'))
+
+
+```
+
+
+```{r}
+
+race = county_facts[c(1:4, 11:17)]
+setnames(race, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214"), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino"))
+
+```
+
+```{r}
+whites = race[c(3, 5)]
+blacks = race[c(3, 6)]
+native = race[c(3, 7)]
+asian = race[c(3, 8)]
+pacific = race[c(3, 9)]
+multi = race[c(3, 10)]
+latin = race[c(3, 11)]
+
+#The racial values converted to decimals and then multiplied by total population to get the whole number value of votes per county by race
+bpop = 0.01*race['Black']*race['Population']
+wpop = 0.01*race['White']*race['Population']
+napop = 0.01*race['Native American']*race['Population']
+apop = 0.01*race['Asian']*race['Population']
+pipop = 0.01*race['Pacific Islander']*race['Population']
+mupop = 0.01*race['2+ Races']*race['Population']
+lpop = 0.01*race['Latino']*race['Population']
+
+race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, bpop, wpop, napop, apop, pipop, mupop, lpop)
+
+#issue: State fips code and totals are mixed with counties, so sums don't give real total votes
+
+#Total number of votes from each race for the enitre election
+totBl = (sum(race2$Black)-race2$Black[1])/1000000
+totWh = (sum(race2$White)-race2$White[1])/1000000
+totNa = (sum(race2$Native.American)-race2$Native.American)[1]/1000000
+totAs = (sum(race2$Asian)-race2$Asian[1])/1000000
+totPi = (sum(race2$Pacific.Islander)-race2$Pacific.Islander[1])/1000000
+totMu = (sum(race2$X2..Races)-race2$X2..Races[1])/1000000
+totLa = (sum(race2$Latino)-race2$Latino[1])/1000000
+
+totals = c(totAs, totBl, totMu, totNa, totPi, totWh, totLa)
+```
+
+```{r}
+
+#barplot of total number of voters by race
+barplot(totals, col=rainbow(7), names.arg = c("Asian", "Black", "Mixed", "Native", "Pacific", "White", "Latino"), main = "Total Votes by race", xlab = 'Races', ylab = "Votes in Millions")
+
+#Same barplot, but withput the white vote for a better view of the others
+barplot(totals[-c(6,7)], col=rainbow(7), names.arg = c("Asian", "Black", "Mixed", "Native", "Pacific"), main = "Total Votes by race, Excluding Whites & Latinos", xlab = 'Races', ylab = "Votes in Millions")
 ```
 
 ```{r}
 #Boxplot of the percentages of votes per county by racial group
 boxplot(race[c(5:10)])
 
-#Boxplot of whole number of votes per county by race
-boxplot(race2[c(5:10)])
+#Summary of whole number of votes per county by race
+summary(race2[c(5:10)])
 
 ```
 
 
 ```{r}
 #GGplot bar graph example of each racial group
-whites = race[c(3, 5)]
+
 bar1 <- ggplot(data=whites, aes(x=sa))
 bar1 + geom_bar() + 
   xlab("Counties") +  ylab("Percentages") + ggtitle("White Population percentage of Votes")
 
+#Helps visualizing missing data
 marginplot(whites)
+
+
+
 barplot(whites$White)
 
 densityPlot(whites$White)
 qqPlot(whites$White)
+
+```
 
 
 #White votes versus all populations  
@@ -105,171 +190,41 @@ scatterplot( race$White, race$Population , ylim= c(0,50000), xlim = c(0,100), xl
 #Wisconsin White Voting whole number values 
 WIWhitesBoxplotSubset = subset(race2, race.sa=="WI", select = c(race.area_name, race.Population, White, race.sa))
 
-barplot(WIWhitesBoxplotSubset$White, col = rainbow(20))
+barplot(WIWhitesBoxplotSubset$White, col = rainbow(20), main = "Wisconsin Total Votes by County ", xlab = "Counties", ylab = "Number of Votes")
 
 #California White Voting whole number values 
 CAWhitesBoxplotSubset = subset(race2, race.sa=="CA", select = c(race.area_name, race.Population, White, race.sa))
 
-barplot(CAWhitesBoxplotSubset$White, col = rainbow(20))
+barplot(CAWhitesBoxplotSubset$White, col = rainbow(20), main = "California Total Votes by County ", xlab = "Counties", ylab = "Number of Votes")
 
-```
-
-```{r}
-blacks = race[c(3, 6)]
-bar2 <- ggplot(data=blacks, aes(x=sa))
-bar2 + geom_bar() + 
-  xlab("Counties") +  ylab("Percentages") + ggtitle("Black Population percentage of Votes")
-
-marginplot(blacks)
-barplot(blacks$Black)
-
-densityPlot(blacks$Black)
-qqPlot(blacks$Black)
-
-#Black votes versus all populations  
-scatterplot( race$Black, race$Population , ylim= c(0, 4000000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Total Population per County")
-
-#Black votes versus populations between 500,000-1,000,000
-scatterplot( race$Black, race$Population , ylim= c(500000, 1000000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Population per County: 500,000-1,000,000")
-
-#Black votes versus populations between 100,000-500,000
-scatterplot( race$Black, race$Population , ylim= c(100000, 500000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Population per County: 100,000-500,000")
-
-#Black votes versus populations between 50,000-100,000
-scatterplot( race$Black, race$Population , ylim= c(50000, 100000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Population per County: 50,000-100,000")
-
-#Black votes versus populations between 0-50,000
-scatterplot( race$Black, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of Black Votes", ylab="Population per County: 0-50,000")
-
-#Wisconsin Black Voting whole number values 
-WIBlacksBoxplotSubset = subset(race2, race.sa=="WI", select = c(race.area_name, race.Population, Black, race.sa))
-
-barplot(WIBlacksBoxplotSubset$Black, col = rainbow(20))
-
-#California Black Voting whole number values 
-CABlacksBoxplotSubset = subset(race2, race.sa=="CA", select = c(race.area_name, race.Population, Black, race.sa))
-
-barplot(CABlacksBoxplotSubset$Black, col = rainbow(20))
-
-```
-
-```{r}
-asian = race[c(3, 8)]
-bar4 <- ggplot(data=asian, aes(x=sa))
-bar4 + geom_bar() + 
-  xlab("Counties") +  ylab("Percentages") + ggtitle("Asian Population percentage of Votes")
-
-marginplot(asian)
-barplot(asian$Asian)
-
-densityPlot(asian$Asian)
-qqPlot(asian$Asian)
-
-#Asian votes versus all populations  
-scatterplot( race$Asian, race$Population , ylim= c(0, 4000000), xlim = c(0,100), xlab="Number of Asian Votes", ylab="Total Population per County")
-
-#Asian votes versus populations between 500,000-1,000,000
-scatterplot( race$Asian, race$Population , ylim= c(500000, 1000000), xlim = c(0,100), xlab="Number of Asian Votes", ylab="Population per County: 500,000-1,000,000")
-
-#Asian votes versus populations between 100,000-500,000
-scatterplot( race$Asian, race$Population , ylim= c(100000, 500000), xlim = c(0,100), xlab="Number of Asian Votes", ylab="Population per County: 100,000-500,000")
-
-#Asian votes versus populations between 50,000-100,000
-scatterplot( race$Asian, race$Population , ylim= c(50000, 100000), xlim = c(0,100), xlab="Number of Asian Votes", ylab="Population per County: 50,000-100,000")
-
-#Asian votes versus populations between 0-50,000
-scatterplot( race$Asian, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of Asian Votes", ylab="Population per County: 0-50,000")
-
+#Scatterplot of the relationship between population size and race
+scatterplot(CAWhitesBoxplotSubset$White, CAWhitesBoxplotSubset$race.Population, main="California White Vote Versus Population")
 
 ```
 
 
-```{r}
-
-native = race[c(3, 7)]
-bar3 <- ggplot(data=native, aes(x=sa))
-bar3 + geom_bar() + 
-  xlab("Counties") +  ylab("Percentages") + ggtitle("Native Population percentage of Votes")
-
-marginplot(native)
-barplot(native$`Native American`)
-
-densityPlot(native$`Native American`)
-qqPlot(native$`Native American`)
-
-#Native American votes versus all populations  
-scatterplot( race$`Native American`, race$Population , ylim= c(0, 4000000), xlim = c(0,9500), xlab="Number of Native American Votes", ylab="Total Population per County")
-
-#Native American votes versus populations between 500,000-1,000,000
-scatterplot( race$`Native American`, race$Population , ylim= c(500000, 1000000), xlim = c(0,9500), xlab="Number of Native American Votes", ylab="Population per County: 500,000-1,000,000")
-
-#Native American votes versus populations between 100,000-500,000
-scatterplot( race$`Native American`, race$Population , ylim= c(100000, 500000), xlim = c(0,9500), xlab="Number of Native American Votes", ylab="Population per County: 100,000-500,000")
-
-#Native American votes versus populations between 50,000-100,000
-scatterplot( race$`Native American`, race$Population , ylim= c(50000, 100000), xlim = c(0,9500), xlab="Number of Native American Votes", ylab="Population per County: 50,000-100,000")
-
-#Native American votes versus populations between 0-50,000
-scatterplot( race$`Native American`, race$Population , ylim= c(0,50000), xlim = c(0,9500), xlab="Number of Native American Votes", ylab="Population per County: 0-50,000")
-
-```
-
-```{r}
-pacific = race[c(3, 9)]
-bar5 <- ggplot(data=pacific, aes(x=sa))
-bar5 + geom_bar() + 
-  xlab("Counties") +  ylab("Percentages") + ggtitle("Pacific Islander Population percentage of Votes")
-
-marginplot(pacific)
-barplot(pacific$`Pacific Islander`)
-
-densityPlot(pacific$`Pacific Islander`)
-qqPlot(pacific$`Pacific Islander`)
-
-#Pacific Islander votes versus all populations  
-scatterplot( race$`Pacific Islander`, race$Population , ylim= c(0, 4000000), xlim = c(0,100), xlab="Number of Pacific Islander Votes", ylab="Total Population per County")
-
-#Pacific Islander votes versus populations between 500,000-1,000,000
-scatterplot( race$`Pacific Islander`, race$Population , ylim= c(500000, 1000000), xlim = c(0,100), xlab="Number of Pacific Islander Votes", ylab="Population per County: 500,000-1,000,000")
-
-#Pacific Islander votes versus populations between 100,000-500,000
-scatterplot( race$`Pacific Islander`, race$Population , ylim= c(100000, 500000), xlim = c(0,100), xlab="Number of Pacific Islander Votes", ylab="Population per County: 100,000-500,000")
-
-#Pacific Islander votes versus populations between 50,000-100,000
-scatterplot( race$`Pacific Islander`, race$Population , ylim= c(50000, 100000), xlim = c(0,100), xlab="Number of Pacific Islander Votes", ylab="Population per County: 50,000-100,000")
-
-#Pacific Islander votes versus populations between 0-50,000
-scatterplot( race$`Pacific Islander`, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of Pacific Islander Votes", ylab="Population per County: 0-50,000")
 
 
-```
 
-```{r}
-multi = race[c(3, 10)]
-bar6 <- ggplot(data=multi, aes(x=sa))
-bar6 + geom_bar() + 
-  xlab("Counties") +  ylab("Percentages") + ggtitle("Multiracial Population percentage of Votes")
 
-marginplot(multi)
-barplot(multi$`2+ Races`)
 
-densityPlot(multi$`2+ Races`)
-qqPlot(multi$`2+ Races`)
 
-#Multiracial votes versus all populations  
-scatterplot( race$`2+ Races`, race$Population , ylim= c(0, 4000000), xlim = c(0,100), xlab="Number of Multiracial Votes", ylab="Total Population per County")
 
-#Multiracial votes versus populations between 500,000-1,000,000
-scatterplot( race$`2+ Races`, race$Population , ylim= c(500000, 1000000), xlim = c(0,100), xlab="Number of Multiracial Votes", ylab="Population per County: 500,000-1,000,000")
 
-#Multiracial votes versus populations between 100,000-500,000
-scatterplot( race$`2+ Races`, race$Population , ylim= c(100000, 500000), xlim = c(0,100), xlab="Number of Multiracial Votes", ylab="Population per County: 100,000-500,000")
 
-#Multiracial votes versus populations between 50,000-100,000
-scatterplot( race$`2+ Races`, race$Population , ylim= c(50000, 100000), xlim = c(0,100), xlab="Number of Multiracial Votes", ylab="Population per County: 50,000-100,000")
 
-#Multiracial votes versus populations between 0-50,000
-scatterplot( race$`2+ Races`, race$Population , ylim= c(0,50000), xlim = c(0,100), xlab="Number of Multiracial Votes", ylab="Population per County: 0-50,000")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -278,7 +233,7 @@ scatterplot( race$`2+ Races`, race$Population , ylim= c(0,50000), xlim = c(0,100
 
 
 ```{r}
-county_facts <- read.csv("C:/Users/brian/OneDrive/3 Data Science/Data Science Project/county_facts.csv")
+
 set.seed(1)    # for reproducible example
 map.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
@@ -306,7 +261,7 @@ ggplot(map.df, aes(x=long, y=lat, group=group, fill=wvp75), color = "black") + g
 ```
 
 ```{r}
-county_facts <- read.csv("C:/Users/brian/OneDrive/3 Data Science/Data Science Project/county_facts.csv")
+
 set.seed(1)    # for reproducible example
 map.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
@@ -334,7 +289,7 @@ ggplot(map.df, aes(x=long, y=lat, group=group, fill=wvp75)) + geom_polygon()+coo
 
 
 ```{r}
-county_facts <- read.csv("C:/Users/brian/OneDrive/3 Data Science/Data Science Project/county_facts.csv")
+
 set.seed(1)    # for reproducible example
 map.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
@@ -356,7 +311,7 @@ ggplot(map.df, aes(x=long, y=lat, group=group, fill=WIWhiteVotePercent)) + geom_
 ```
 
 ```{r}
-county_facts <- read.csv("C:/Users/brian/OneDrive/3 Data Science/Data Science Project/county_facts.csv")
+
 set.seed(1)    # for reproducible example
 map.county <- map_data('county')
 counties   <- unique(map.county[,5:6])
@@ -381,10 +336,11 @@ ggplot(map.df, aes(x=long, y=lat, group=group, fill=WIBlackVotePercent)) + geom_
 ```{r}
 
 classcolors <- c('red', 'cyan' )
-usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead], plot = TRUE) 
+usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "wisconsin", fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "california", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
-map('county', "pennsylvania", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
+map('county', "Colorado", fill= TRUE, col = classcolors[mpe16rwvd9$lead])map
+map('county', "illinois", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 ```
 
@@ -400,9 +356,9 @@ BvW =data.frame(nbpop, nwpop, county_facts["state_abbreviation"])
 sBvW=subset(BvW, state_abbreviation=="WI", select = c(Black, White, state_abbreviation))
 
 
-BvWBar <- ggplot(data=sBvW, aes(x=state_abbreviation))
-BvWBar + geom_bar() + 
-  xlab("") +  ylab("") + ggtitle("")
+# BvWBar <- ggplot(data=sBvW, aes(x=state_abbreviation))
+# BvWBar + geom_bar() + 
+#   xlab("") +  ylab("") + ggtitle("")
 
 #scatterplot(race)
 ```
@@ -415,43 +371,4 @@ hillary=subset(mpe16rwvd9, Candidates=="Hillary.Clinton", select = c(county, tot
 
 ```
 
-```{r}
-
-```
-
-```{r}
-#The racial values converted to decimals and then multiplied by total population to get the whole number value of votes per county by race
-bpop = 0.01*race['Black']*race['Population']
-wpop = 0.01*race['White']*race['Population']
-napop = 0.01*race['Native American']*race['Population']
-apop = 0.01*race['Asian']*race['Population']
-pipop = 0.01*race['Pacific Islander']*race['Population']
-mupop = 0.01*race['2+ Races']*race['Population']
-
-
-race2 =data.frame(race$fips, race$area_name, race$sa,  race$Population, bpop, wpop, napop, apop, pipop, mupop, race$sa, race$area_name)
-
-totBl = sum(race2$Black)
-totWh = sum(race2$White)
-totNa = sum(race2$Native.American)
-totAs = sum(race2$Asian)
-totPi = sum(race2$Pacific.Islander)
-totMu = sum(race2$X2..Races)
-
-
-#Comparison of total number of voters by race
-totals = c(totAs, totBl, totMu, totNa, totPi, totWh)
-barplot(totals, col=rainbow(6))
-
-#legend.text = c("Asian", "Black", "Multiracial", "Native American", "Pacific Islander", "White")
-#, legend.text = c("A", "B", "M", "NA", "PI", "W"),  args.legend = list(x = "bottomright")
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
 
