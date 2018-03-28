@@ -272,13 +272,13 @@ ggplot(map.dfwi, aes(x=long, y=lat, group=group, fill=WIWhiteVotePercent)) + geo
 ```
 
 
-```{r}
+```{r fig.height=100, fig.width=100}
 #Graphs of the democrats vs republic coutnies won
 classcolors <- c('red', 'cyan' )
-usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
+usmapDvR=map('county', fill= TRUE, col = classcolors[mpe16rwvd9$lead], resolution = 0) 
 map('county', "wisconsin", fill= TRUE, col = classcolors[mpe16rwvd9$lead]) 
 map('county', "California", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
-map('county', "new york", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
+map('county', "new jersey", fill= TRUE, col = classcolors[mpe16rwvd9$lead])
 
 
 ```
@@ -310,8 +310,11 @@ dts = data.frame(trump$Votes/trump$total_votes)
 trump = cbind(trump, percnt =dts)
 
 hillary=subset(mpe16rwvd9[-1,], Candidates=="Hillary.Clinton", select = c(county, total_votes, Candidates, Votes))
+hcs = data.frame(hillary$Votes/hillary$total_votes)
+hillary = cbind(hillary, percnt=hcs)
 
-dt=merge(trump[c(1:4)], mpe16rwvd9[c("county", "lead")], by.x = 4, by.y = 2, all.x = TRUE)
+
+
 ```
 
 ```{r}
@@ -327,8 +330,7 @@ uscounties <- counties
 
 dont = trump$trump.Votes.trump.total_votes
 
-trumpsupport <- data.frame(state_names=uscounties$region, county_names=uscounties$subregion, dontrus=donts[1:3076])
-
+trumpsupport <- data.frame(state_names=uscounties$region, county_names=uscounties$subregion, dontrus=dont[1:3076])
 
 map.countytrump <- data.table(map.countytrump)
 setkey(map.countytrump,region,subregion)
@@ -336,8 +338,34 @@ trumpsupport <- data.table(trumpsupport)
 setkey(trumpsupport,state_names,county_names)
 map.dftrump      <- map.countytrump[trumpsupport]
 
-ggplot(map.dftrump, aes(x=long, y=lat, group=group, fill=dontrus), color = "black") + geom_polygon( )+coord_map() + 
-  borders(database = "county")
+ggplot(map.dftrump,  aes(x=long, y=lat, group=group, fill=dontrus), color = "black") + geom_polygon( )+coord_map() + 
+  borders(database = "county") + ggtitle("Donald Trump County Support in Percentages")
 
 ```
 
+```{r}
+#Showing the level of support of Donald hillary in each county.
+#Wyoming shows the lightest shade of Blue, representing the higher support for hillary
+#Arkansas shows the lowest 
+
+set.seed(1)
+map.countyhillary <- map_data('county')
+counties   <- unique(map.countyhillary[,5:6])
+uscounties <- counties
+
+
+hicl = hillary$hillary.Votes.hillary.total_votes
+
+hillarysupport <- data.frame(state_names=uscounties$region, county_names=uscounties$subregion, hilclis=hicl[1:3076])
+
+map.countyhillary <- data.table(map.countyhillary)
+setkey(map.countyhillary,region,subregion)
+hillarysupport <- data.table(hillarysupport)
+setkey(hillarysupport,state_names,county_names)
+map.dfhillary      <- map.countyhillary[hillarysupport]
+
+ggplot(map.dfhillary, aes(x=long, y=lat, group=group, fill=hilclis), color = "white") + geom_polygon( )+coord_map() + 
+  borders(database = "county")+ ggtitle("Hillary Clinton County Support in Percentages")
+
+
+```
