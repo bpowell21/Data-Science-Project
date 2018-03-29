@@ -1,0 +1,36 @@
+library(ggplot2)
+library(lattice)
+library(datasets)
+library(mice)
+library(VIM)
+library(reshape2)
+library(graphics)
+library(maps)
+library(plyr)
+
+#reading in files
+county_facts <- read.csv("county_facts.csv")
+pres_res <- read.csv("pres16results.csv")
+pres_elect_res <- read.csv("pres.elect16.results.wide.votes.dec9.csv")
+primary_res <- read.csv("primary_results.csv")
+counties <- map_data("county")
+
+#changing column names
+colnames(county_facts)[colnames(county_facts)=="INC910213"] <- "Per capita income"
+colnames(county_facts)[colnames(county_facts)=="INC110213"] <- "Median household income"
+colnames(county_facts)[colnames(county_facts)=="PVY020213"] <- "Ppl below poverty %"
+
+#creating a new county data frame
+county_data <- county_facts[c(3100:3171), c(2, 33:35)]
+
+#creating a bar graph for poverty levels
+ggplot(county_data, aes(x=county_data$area_name, y=county_data$'Ppl below poverty %')) + geom_bar(stat="identity", color = "blue", fill = "white") + 
+  labs(x="Counties", y="Percentage of County Below Poverty Line") + coord_flip()
+
+#creating a bar graph for income levels
+ggplot(county_data, aes(x=county_data$area_name, y=county_data$'Median household income')) + geom_bar(stat="identity", color = "red", fill = "white") + 
+  labs(x="Counties", y="Median Household Income") + coord_flip()
+
+#creating a bar graph for Per capita income
+ggplot(county_data, aes(x=county_data$area_name, y=county_data$'Per capita income')) + geom_bar(stat="identity", color = "darkgreen", fill = "white") +
+  labs(x="Counties", y="Per Capita Income")
