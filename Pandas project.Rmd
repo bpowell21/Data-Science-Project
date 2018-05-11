@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+#Importing the packages needed 
+```{r}
+Packages <- c('ggplot2', 'ggthemes','mapdata', 'maptools', 'tidyverse', 'VIM' , 'viridis')
+
+lapply(Packages, library, character.only = TRUE)
+library(tibble)
+
+```
+```{r}
+#Sets the root folder for reading files
+#setwd("~/Documents/Marquette/Sophomore/Intro to Data Science/Pandas Project/")
+
+#Read county demographic data
+raw_data = read.csv("county_facts.csv")
+pop_data = read.csv("county_pop_est.csv")
+```
+
+```{r}
+#Merging the two datasets using FIPS ID
+  #Sets the column name to be correct
+names(pop_data)[2] <- "fips"
+
+pop_data <- pop_data[, c(1:3, 12)]
+
+combined_data <- merge(raw_data, pop_data, by="fips")
+
+#Removes extraneous data (i.e. duplicate county names)
+combined_data <- combined_data[-c(4:6, 8, 20, 26:27,29, 36:52, 54:56)]
+
+#Moves population columns to the front and removes extraneous variables
+combined_data <- combined_data[, c(1:4, 29, 5:28)]
+
+setnames(combined_data, old=c("POP010210", "respop72016", 'AGE295214', "AGE775214", "SEX255214",
+"RHI125214", "RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214", "RHI825214",   
+"POP645213", "POP815213", "EDU635213", "EDU685213", "VET605213", "HSG445213", "HSG495213", "HSD410213","HSD310213", 
+"INC910213", "INC110213", "PVY020213", "LND110210"), new = c("census_count_2010", "2016_pop_est", "%_under_18",
+"%_over_65", "%_female","%_white_w/hispanic", "%_black","%_native", "%_asian","%_polynesian","%_2+_races", "%_hispanic",
+"%_white_alone","%_foreign_born", "%_non_english","%_high_school+","%_bachelors+","%_veterans", "%_homeowners", 
+"median_home_value","num_households", "persons_per_household","per_capita_income","median_household_income",
+"%_in_poverty", "land_area_2010"))
+
+
+combined_data$`2016_pop_est` <-as.numeric(as.character(combined_data$`2016_pop_est`))
+combined_data[30] <- combined_data[5] / combined_data[29]
+names(combined_data)[30] <- "pop_density"
+
+
+#Converts integer percents to doubles < 1
+combined_data[6:20] <- combined_data[6:20] / 100.0
+combined_data[21] <- combined_data[21] / combined_data[5]
+combined_data[22] <- combined_data[22] / 100.0
+combined_data[28] <- combined_data[28] / 100.0
+
+```
+
+```{r}
+
+#Read Presidential Results
+pres_data <- read.csv("2016_pres_results.csv")
+#names(pres_data)[2] <- "pres_fips"
+pres_data$fips <- NULL
+pres_data$pct_report <- NULL
+names(pres_data)[2] <- "state_abbreviation"
+
+#Merge county demographics and presidential results
+names(combined_data)[2] <- "county"
+combined_data <- merge(combined_data, pres_data, by=c("county", "state_abbreviation"))
+
+#Set FIPS as the index
+row.names(combined_data) <- combined_data$fips
+
+#Reorganize columns
+  #Moves state.name next to state_abbreviation
+  #Moves Donald.Trump, Hillary.Clinton, Gary.Johnson, Jill.Stein to be the first candidates listed
+combined_data <- combined_data[, c(1:2, 33, 3:32, 40, 46, 44, 48,  34:39, 41:43, 45, 47, 49:65)]
+
+#Combining non-major candidates
+combined_data[is.na(combined_data)] <- 0
+combined_data[38] <- combined_data[32] - combined_data[34] - combined_data[35] - combined_data[36] - combined_data[37]
+names(combined_data)[38] <- "other"
+combined_data[39:65] <- NULL
+
+#Read County Age Demographics (Incredidbly large file)
+#age_data <- read.csv("county_age_data.csv")
+#age_data[9:80] <- NULL
+#age_data[1:3] <- NULL
+
+#age_data <- subset(age_data, YEAR == 9)
+#age_data <- subset(age_data, AGEGRP != 0)
+#age_data$YEAR = "2016"
+
+#Mapping the pres results
+```
+
+```{r}
+county <- map_data("county")
+
+gg <- ggplot()
+gg <- gg + geom_map(data=county, map=county,
+                    aes(long, lat, map_id=region),
+                    color="#2b2b2b", fill=NA, size=0.15)
+gg <- gg + geom_map(data=combined_data, map=county,
+                    aes(fill = combined_data$Hillary.Clinton/combined_data$total_votes, map_id=fips),
+                    color="white", fill=NA)
+gg <- gg + coord_map("polyconic")
+gg <- gg + theme_map()
+gg <- gg + theme(plot.margin=margin(20,20,20,20))
+gg
+
+classcolors <- c('red', 'cyan' )
+usmapDvR=map('county', fill= TRUE, col = classcolors[combined_data$lead], resolution = 0) 
+
+combined_data[39] <- combined_data[34] / combined_data[32]
+names(combined_data)[39] <- "trump_%"
+
+combined_data[40] <- combined_data[20] - combined_data[21]
+names(combined_data)[40] <- "%_high_school_only"
+combined_data <- combined_data[, c(1:19, 40, 20:39)]
+
+combined_data[41] <- 1 - combined_data[21]
+names(combined_data)[41] <- "%_no_high_school"
+combined_data <- combined_data[, c(1:19, 41, 20:40)]
+
+marginplot(combined_data[, c("%_bachelor's+", "trump_%")], pch = 20)
+marginplot(combined_data[, c("%_no_high_school", "trump_%")], pch = 20)
+
+```
+
+
