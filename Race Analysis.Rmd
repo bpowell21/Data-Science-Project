@@ -1,0 +1,646 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+
+```{r}
+setwd("C:/Users/brian/OneDrive/3 Data Science/Data Science Project")
+```
+#Importing the packages needed 
+```{r}
+
+Packages <- c('car', "caret", 'corrplot', 'datasets', 'data.table', 'dplyr', 'ggplot2', 'graphics', 'knitr', 'maps', 'mice','plyr', 'plotly', 'reshape', 'stats', 'usmap', 'VIM', 'xlsx', 'xlsxjars')
+lapply(Packages, library, character.only = TRUE)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(rpart)
+
+```
+
+#Loading the external data
+
+```{r}
+#1
+county_facts <- read.csv("county_facts.csv")
+#2
+pres16res <- read.csv("pres16results.csv")
+#3
+widevote <- read.csv("pres.elect16.results.wide.votes.dec9.csv")
+#4
+primres <- read.csv("primary_results.csv")
+#5
+exitpolls <- read.csv("exitpollsdatacnn04022017.csv")
+#6
+votesRA = read.csv("Votes per state.csv")
+#7
+electoral = read.csv("2016_electoral_votes.csv")
+#8
+censusRA = read.csv("censusraceagevote.csv")
+#9
+#elec2012 <- read.csv("2012_pres_results.txt")
+
+data(county.fips, state.fips)
+states <- map_data("state")
+counties <- map_data("county")
+```
+
+#Testing each data set for missingness
+```{r}
+
+#County facts
+aggr1_plotfacts <- aggr(county_facts, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('County Facts Histogram of Missing Data','Pattern'))
+
+#presidential election 2016 results
+aggr1pres <- aggr(pres16res, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Presidential Results Histogram of Missing Data','Pattern'))
+
+#wide results
+aggr1wide <- aggr(widevote, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Wide Presidential Results Histogram of Missing Data','Pattern'))
+
+#primary dataset
+aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Primary Result Histogram of Missing Data','Pattern'))
+
+#Exit polls
+aggrexit <- aggr(exitpolls, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Exit Polls Histogram of Missing Data','Pattern'))
+```
+
+#CLEANING the data/ Datframe manipulation
+#1: County Facts
+```{r}
+#county_facts=county_facts[, !(colnames(county_facts) %in% c("AGE135214", "LFE305213", "MAN450207", "WTN220207", "LND110210"))]
+
+#Renaming the columns for easier reading
+setnames(county_facts, old=c("PST045214", "state_abbreviation", "RHI125214","RHI225214", "RHI325214", "RHI425214", "RHI525214", "RHI625214", "RHI725214", 'RHI825214', 'INC110213', 'EDU685213' ), new=c("Population", "sa", "White", "Black", "Native American", "Asian", "Pacific Islander", "2+ Races", "Latino", "White/Not Latino", "Median Income", "College+"))
+
+#Creating a states Dataframe, while removing the state facts from the county_facts data set
+
+stfips = data.frame(fips=1000*state.fips$fips)
+#Adding non-continental states to data frame: Alaska 2000, Hawaii 15000
+stfips[64,] <- 2000
+stfips[65,] <- 15000
+
+#Creating the states dataframe
+statesfacts = county_facts[(county_facts$fips %in% stfips$fips),]
+statesfacts$state_abbreviation <- NULL
+statesfacts=statesfacts[-c(3)]
+
+#removing state facts
+county_facts = county_facts[!(county_facts$fips %in% stfips$fips),]
+```
+#2: Presidential Results 16
+```{r}
+#Separating the state and the county results
+nodata <- data.frame(pres16res[18352:18475, 1:2])
+
+NoResData <- unique(pres16res[is.na(pres16res[c(3:9)]),])
+
+ 
+pres16resST = pres16res[is.na(pres16res$county),]
+pres16resCT = pres16res[!is.na(pres16res$county),]
+```
+
+#3: Pres.election 16 results Dec.9 Wide Votes
+```{r}
+regrpesubset = subset(widevote)
+#regrpesubset[is.na(regrpesubset[c(8:39)])] <- 0
+regrpesubset =regrpesubset[with(regrpesubset, order(regrpesubset$fips)), ]
+rownames(regrpesubset) <- 1:nrow(regrpesubset)
+
+statesvotes<-subset(widevote,  is.na(widevote$county)) 
+
+#Replacing original county data without state data
+widevote = widevote[!(widevote$county %in% statesvotes$county),]
+widevote =widevote[with(widevote, order(widevote$fips)), ]
+rownames(widevote) <- 1:nrow(widevote)
+
+setnames(widevote, old = c(8:13, 15:19, 21:39), new = c("other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other"))
+
+#Making the other candidate & votes column
+widevote <- unique(melt(widevote, id=c(1:7,14,20), na.rm = FALSE))
+widevote <- widevote[order(widevote$fips) , ]
+widevote <- widevote[c(-4)]
+
+#Changing the names of these 
+setnames(widevote, old = c("value", "variable"), new= c("Votes", "Candidates"))
+
+#Filling votes NA columns with 0 votes 
+widevote$Votes[is.na(widevote$Votes)] <- 0
+
+#Removing excess blank/redundant columns
+setnames(statesvotes, old = c(8:13, 15:19, 21:39), new = c("other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other", "other"))
+
+#Making the other candidate & votes column
+statesvotes <- unique(melt(statesvotes, id=c(1:7,14,20), na.rm = FALSE))
+statesvotes <- statesvotes[order(statesvotes$state.name) , ]
+
+#Removing excess/blank columns
+statesvotes <- statesvotes[c(-(53:54)), c(-(1:4))]
+
+#Changing the names of these 
+setnames(statesvotes, old = c("value", "variable"), new= c("Votes", "Candidates"))
+
+#Reordering columns and row indices
+statesvotes <- statesvotes[c(3, 2, 1, 5, 4, 6, 7 )]
+rownames(statesvotes) <- 1:nrow(statesvotes)
+```
+
+#5: Exit Polls
+```{r}
+exitpolls <- unique(exitpolls[-c(1, 10)])
+```
+
+#6: Votes by Race and Age
+```{r}
+#Cleaning 
+votesRA  <- subset(votesRA, select = -c(2, 21:22, 25))
+setnames(votesRA, 
+         old = c("ï..State.or..district", "Hillary.Clinton..Democratic.."  , "Hillary.Clinton..Democratic...1" ,       "Hillary.Clinton..Democratic.Electoral..votes",  "Donald.Trump..Republican..","Donald.Trump..Republican...1" ,"Donald.Trump..Republican.Electoral..votes"  ,  "Gary.Johnson..Libertarian.." ,"Gary.Johnson..Libertarian...1", "Gary.Johnson..Libertarian.Electoral..votes","Jill.Stein..Green..","Jill.Stein..Green...1","Jill.Stein..Green.Electoral..votes","Evan.McMullin..Independent.." ,"Evan.McMullin..Independent...1" ,"Evan.McMullin..Independent.Electoral..votes","Others.." ,"Others...1" ,"Others.Electoral..votes","Total.." ,"Total.State"), 
+         new = c("State/District", "HC Vote #", "HC Vote Perc","HC E.Votes", "DT Vote #", "DT Vote Perc", "DT E.Votes", "GJ Vote #", "GJ Vote Perc","GJ E.Votes", "JS Vote #", "JS Vote Perc", "JS E.Votes", "EM Vote #", "EM Vote Perc","EM E.Votes", "Others Vote #", "Others Vote Perc", "Other E.Votes", "Total Vote #", "State"))  
+```
+
+#Checking for missing values after cleaning
+```{r}
+#County facts
+aggr1_plotfacts <- aggr(county_facts, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('County Facts Histogram of Missing Data','Pattern'))
+
+#presidential election 2016 results
+aggr1pres <- aggr(pres16res, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Presidential Results Histogram of Missing Data','Pattern'))
+
+#wide results
+aggr1meltwide <- aggr(widevote, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Wide Presidential Results Histogram of Missing Data','Pattern'))
+
+#primary dataset
+aggr1prim <- aggr(primres, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Primary Result Histogram of Missing Data','Pattern'))
+
+#Exit polls
+aggrexit <- aggr(exitpolls, col = c('Blue','Purple'), numbers = TRUE, sortVars = TRUE, cex.axis = .8, gap = 3, ylab = c('Exit Polls Histogram of Missing Data','Pattern'))
+
+
+```
+
+
+#Making other dataframe from the originals
+#1: County Facts Race Population Data
+```{r}
+USRacePop = county_facts[c(1), c(2, 4, 12:19)]
+
+#Eliminating the US total facts row
+race = county_facts[-1,c(1:4, 12:19, 24, 34)]
+
+#Converting percentages to decimal 
+race[c(5:12)] <-replace(race[c(5:12)], values =0.01*race[c(5:12)])
+race[c(5:12)] <-replace(race[c(5:12)], values =race$Population *race[c(5:12)])
+
+race[c(13)] <- replace(race[c(13)], values =0.01*race[c(13)])
+race[c(13)] <- replace(race[c(13)], values =race$Population *race[c(13)])
+```
+
+#Descriptive Statistics
+```{r}
+summary(race)
+```
+
+#5: Exit polls data
+```{r}
+eprace <- exitpolls[exitpolls$questions=="Race" | exitpolls$questions=="Race and gender" | exitpolls$questions=="Education and race" | exitpolls$questions=="Age by race",]
+
+eprace[c(4:7)] <-replace(eprace[c(4:7)], values =0.01*eprace[c(4:7)])
+
+eprace =eprace[with(eprace, order(eprace$questions)), ]
+rownames(eprace) <- 1:nrow(eprace)
+
+```
+
+#Barplots of Trump & Clinton Support by race
+```{r}
+racetitle <- c("White", "Black", "Latino", "Asian", "Other", 'Non-White')
+
+racecounts <- data.frame(racetitle, h= (eprace[eprace$questions=="Race" & eprace$state=="nation", c(4)]), t= (eprace[eprace$questions=="Race" & eprace$state=="nation", c(5)]))
+
+p <- plot_ly(racecounts, x = ~racetitle, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes'), xaxis = list(title = 'Racial/Ethnic Groups') , barmode = 'stack') 
+p
+
+```
+#Barplots of Trump & Clinton Support by race & gender
+```{r}
+racegentitle <- c('White men', 'White women', 'Black men', 'Black women', 'Latino men', 'Latino women', 'Others')
+
+racegencounts <- data.frame(racegentitle, h= (eprace[eprace$questions=="Race and gender" & eprace$state=="nation", c(4)]), t= (eprace[eprace$questions=="Race and gender" & eprace$state=="nation", c(5)]))
+
+p <- plot_ly(racegencounts, x = ~racegentitle, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes by Gender & Race'), xaxis = list(title = 'Racial/Ethnic Groups') , barmode = 'stack') 
+p
+
+```
+#Barplots of Trump & Clinton Support by race & age
+```{r}
+raceagetitle <- c('Whites 18-29', 'Latinos 30-44', 'Latinos 45-64', 'Latinos 65 and older', 'All others', 'Whites 30-44', 'Whites 45-64', 'Whites 65 and older', 'Blacks 18-29', 'Blacks 30-44', 'Blacks 45-64',	 'Blacks 65 and older', 'Latinos 18-29')
+
+raceagecounts <- data.frame(raceagetitle, h= (eprace[eprace$questions=="Age by race" & eprace$state=="nation", c(4)]), t= (eprace[eprace$questions=="Age by race" & eprace$state=="nation", c(5)]))
+
+raceagecounts = raceagecounts[c(5, 13, 2, 3, 4, 1, 6, 7, 8, 9, 10, 11, 12), ]
+
+p <- plot_ly(raceagecounts, x = ~raceagetitle, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes by Race & Age'), xaxis = list(title = "", tickangle = 45),  barmode = 'stack', margin = list(b = 200)) 
+p
+
+```
+#Barplots of Trump & Clinton Support by race & education
+```{r}
+
+edurace = exitpolls[exitpolls$questions == "Education and race" & exitpolls$state == "nation",]
+
+eduracetitle <- c('White college graduates', 'Whites no degree', 'Non-whites college grads', 'Non-whites no degree')
+
+eduracecounts <- data.frame(eduracetitle, h= edurace[, c(4)], t= edurace[, c(5)])
+
+
+p <- plot_ly(eduracecounts, x = ~eduracetitle, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes by Education Level'), xaxis = list(title = "", tickangle = 45),  barmode = 'stack', margin = list(b = 200)) 
+p
+
+```
+#Barplots of Trump & Clinton Support by race & education
+```{r}
+
+edu = exitpolls[exitpolls$questions == "Education" & exitpolls$state == "nation",]
+
+eduracetitle <- c('High school or less',  'Some college', 'College graduate', 'Postgraduate ')
+
+eduracecounts <- data.frame(eduracetitle, h= edu[, c(4)], t= edu[, c(5)])
+
+
+p <- plot_ly(eduracecounts, x = ~eduracetitle, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes by Education Level'), xaxis = list(title = "", tickangle = 45),  barmode = 'stack', margin = list(b = 200)) 
+p
+
+```
+
+
+
+#Barplots of Trump & Clinton Support by income
+```{r}
+income = exitpolls[exitpolls$questions == "Income" & exitpolls$state == "nation",]
+
+incomelabel <- c('Under $30,000', '$30K-$49,999', '$50K-$99,999', '$100K-$199,999', "$200K-$249,999", "$250,000 or more", 'Under $50K', '$50K or more', 'Under $100K', '$100K or more',"$50K-$100K" )
+
+incomecounts <- data.frame(incomelabel, h=income[, c(4)], t= income[, c(5)])
+
+
+p <- plot_ly(incomecounts, x = ~incomelabel, y = ~h , type = 'bar', name = 'Clinton Support', marker = list(color = 'blue')) %>%
+  add_trace(y = ~t, name = 'Trump Support',marker = list(color = 'red')) %>%
+  layout(yaxis = list(title = 'Percentage of Votes by Income level'), xaxis = list(title = "", tickangle = 45),  barmode = 'stack', margin = list(b = 200)) 
+p
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+ages = censusRA[censusRA$Race == "All races" & censusRA$Gender == "BOTH SEXES", ][-1,] 
+#Barplots of Trump & Clinton Support by race
+
+agecohorts <- c("18 to 24 years", "25 to 44 years", "45 to 64 years", "65 to 74 years", "75 years and over")
+
+agecounts <- data.frame(agecohorts, h= ages[, c(13)], t= ages[, c(15)])
+
+p <- plot_ly(agecounts, x = ~agecohorts, y = ~h , type = 'bar', name = 'Voted percent', marker = list(color = 'orange')) %>%
+  add_trace(y = ~t, name = 'Did not Vote percent',marker = list(color = 'green')) %>%
+  layout(yaxis = list(title = 'Age Cohort: Voted Vs. Didn\'t Vote %'), xaxis = list(title = '') , barmode = 'stack') 
+p
+
+```
+
+#Barplot of counties won between HC and DT
+```{r}
+
+ggplot(data = widevote, aes(x = lead, fill = lead)) + geom_bar() + xlab("") + 
+    ylab("Number of Counties") + scale_fill_manual(name = "Main Candidate", values = rainbow(2)) +ggtitle(label = "Counties Won by candidate")
+```
+
+#Barplot of Total counties per state
+```{r}
+bar1 <- ggplot(data=race, aes(x=sa))
+bar1 + geom_bar() +   xlab("Counties") +  ylab("Number of Counties") + ggtitle("Counties per State") 
+```
+
+#Forming the main candidate dataframe which consists of total votes, votes per candidate, as well as percentage of votes and the racial population percentages per county
+```{r}
+hcperc = widevote$Hillary.Clinton/widevote$total_votes
+dtperc = widevote$Donald.Trump/widevote$total_votes
+
+maincands=subset(widevote[-1,], select = c(fips, st, county, total_votes, lead, Hillary.Clinton, Donald.Trump))
+
+maincands=cbind(maincands, hcperc[-1], dtperc[-1])
+
+maincands= maincands[c(1, 2 ,3, 4, 5, 6,8 , 7, 9)]
+
+wperc = race$White/race$Population
+bperc = race$Black/race$Population
+naperc = race$`Native American`/race$Population
+aperc = race$Asian/race$Population
+piperc = race$`Pacific Islander`/race$Population
+biperc = race$`2+ Races`/race$Population
+lperc = race$Latino/race$Population
+eperc = race$`White/Not Latino`/race$Population
+
+
+raceperc = data.frame(cbind(race['fips'], race["Population"], wperc, bperc, naperc, aperc, piperc, biperc, lperc, eperc, College= race$`College+`, MedIncome =race$`Median Income`))
+
+setnames(raceperc, old=c('wperc', 'bperc', 'naperc', 'aperc', 'piperc', 'biperc', 'lperc', 'eperc'), new=c("White Perc", "Black Perc", "Native American Perc", "Asian Perc", "Pacific Islander Perc", "2+ Races Perc", "Latino", "White/Not Latino Perc"))
+
+rcs =merge(maincands, raceperc, by = "fips", all = FALSE)[-1]
+rcs =rcs[with(rcs, order(rcs$st)), ]
+rcs[c(10:17)] <-replace(rcs[c(10:17)], values =race$Population *rcs[c(10:17)])
+
+rownames(rcs) <- 1:nrow(rcs)
+```
+
+#Descriptive Statistics
+```{r}
+summary(rcs)
+```
+
+
+#Forming the state population by race dataframe
+```{r}
+staterace = data.frame(statesfacts[1:3], statesfacts[11:18]*0.01)
+
+wstate = staterace['White']*staterace['Population']
+bstate = staterace['Black']*staterace['Population']
+nastate = staterace['Native.American']*staterace['Population']
+astate = staterace['Asian']*staterace['Population']
+pistate = staterace['Pacific.Islander']*staterace['Population']
+mustate = staterace['X2..Races']*staterace['Population']
+lstate = staterace['Latino']*staterace['Population']
+estate = staterace['White.Not.Latino']*staterace['Population']
+
+staterace = data.frame(staterace[1:3], wstate, bstate,nastate,astate,pistate,mustate,lstate,estate)
+```
+#Making the state vote and race percent dataframe
+```{r}
+
+wstperc = staterace$White/staterace$Population
+bstperc = staterace$Black/staterace$Population
+nastperc = staterace$`Native.American`/staterace$Population
+astperc = staterace$Asian/staterace$Population
+pistperc = staterace$`Pacific.Islander`/staterace$Population
+bistperc = staterace$`X2..Races`/staterace$Population
+lstperc = staterace$Latino/staterace$Population
+estperc = staterace$`White.Not.Latino`/staterace$Population
+
+racestperc = data.frame(cbind(state = staterace['area_name'], wstperc, bstperc, nastperc, astperc, pistperc, bistperc, lstperc, estperc))
+
+setnames(racestperc, old=c('wstperc', 'bstperc', 'nastperc', 'astperc', 'pistperc', 'bistperc', 'lstperc', 'estperc'), new=c("White Perc", "Black Perc", "Native American Perc", "Asian Perc", "Pacific Islander Perc", "2+ Races Perc", "Latino", "White/Not Latino Perc"))
+
+stvoterace = unique(merge(statesvotes, racestperc, by.x = "state.name", by.y = "area_name", all = TRUE))
+
+stvoteracedata = stvoterace[, c(2, 8:15)]
+```
+
+
+```{r}
+othershil = (staterace[6]+ staterace[8]+ staterace[9])*0.56
+hilcount = data.frame(staterace[2], staterace[4]*0.37, staterace[5]*0.89,staterace[10]*0.66, staterace[7]*0.65, othershil)
+setnames(hilcount, old=c("area_name"), new=c("state.name"))
+
+hilrcs = merge(statesvotes, hilcount, by= "state.name", all = FALSE)[-1]
+
+hilrcs = cbind(hilrcs, StateName=statesvotes$state.name)
+hilrcs = hilrcs[c(12, 1:11)]
+hilrcs = hilrcs[with(hilrcs, order(hilrcs$StateName)), ]
+rownames(hilrcs) <- 1:nrow(hilrcs)
+```
+
+#Logistic Regression on the candidates
+```{r}
+rcsonlyrace = na.omit(rcs[c(4, 10:17)])
+
+rcsonlyrace = rcsonlyrace
+sapply(rcsonlyrace,function(x) sum(is.na(x)))
+sapply(rcsonlyrace, function(x) length(unique(x)))
+
+is.factor(rcsonlyrace$lead)
+contrasts(rcsonlyrace$lead)
+```
+
+```{r}
+train <- rcsonlyrace[1:2789,]
+test <- rcsonlyrace[2799:3110,]
+
+model <- glm(lead ~ .,family=binomial(link='logit'), data=train)
+summary(model)
+#plot(model)
+
+p<-predict(model, test, type = "response")
+
+p_class <- ifelse(p<1, "D", "H")
+
+
+table(p_class, test$lead)
+
+#checking my predictions using race data
+#table(test$lead)
+
+#table(p)
+
+confint.default(model)
+
+#confusionMatrix(p_class, test$lead)
+
+```
+
+```{r}
+varImp(model, scale = FALSE)
+
+```
+
+#Log Reg on Education and Median income
+```{r}
+rcsonlyrace = na.omit(rcs[c(4, 18:19)])
+
+rcsonlyrace = rcsonlyrace
+sapply(rcsonlyrace,function(x) sum(is.na(x)))
+sapply(rcsonlyrace, function(x) length(unique(x)))
+
+is.factor(rcsonlyrace$lead)
+contrasts(rcsonlyrace$lead)
+
+train <- rcsonlyrace[1:2789,]
+test <- rcsonlyrace[2799:3110,]
+
+model <- glm(lead ~ .,family=binomial(link='logit'), data=train)
+summary(model)
+#plot(model)
+
+p<-predict(model, test, type = "response")
+
+p_class <- ifelse(p<1, "D", "H")
+
+
+table(p_class, test$lead)
+
+#checking my predictions using race data
+#table(test$lead)
+
+#table(p)
+
+confint.default(model)
+
+#confusionMatrix(p_class, test$lead)
+
+
+```
+```{r}
+varImp(model, scale = FALSE)
+```
+
+#Logistic Regression on the candidates by states
+```{r}
+sapply(stvoteracedata,function(x) sum(is.na(x)))
+sapply(stvoteracedata, function(x) length(unique(x)))
+
+is.factor(stvoteracedata$lead)
+contrasts(stvoteracedata$lead)
+
+train2 <- stvoteracedata[1:34,]
+test2 <- stvoteracedata[36:52,]
+
+model2 <- glm(lead ~ .,family=binomial(link='logit'), data=train2)
+summary(model2)
+plot(model2)
+
+
+p<-predict(model, test, type = "response", na.action = na.pass)
+
+p_class <- ifelse(p<1, "D", "H")
+
+table(p_class, test$lead)
+
+#checking my predictions using race data
+table(test$lead)
+
+#table(p)
+
+confint.default(model)
+
+#confusionMatrix(p_class, test$lead)
+
+library(caTools)
+colAUC(p,test$lead, plotROC = TRUE)
+
+```
+#Logistic Regression on the candidates by states (college+)
+```{r}
+sapply(stvoteracedata,function(x) sum(is.na(x)))
+sapply(stvoteracedata, function(x) length(unique(x)))
+
+is.factor(stvoteracedata$lead)
+contrasts(stvoteracedata$lead)
+
+train2 <- stvoteracedata[1:34,]
+test2 <- stvoteracedata[36:52,]
+
+model2 <- glm(lead ~ .,family=binomial(link='logit'), data=train2)
+summary(model2)
+plot(model2)
+
+
+p<-predict(model, test, type = "response", na.action = na.pass)
+
+p_class <- ifelse(p<1, "D", "H")
+
+table(p_class, test$lead)
+
+#checking my predictions using race data
+table(test$lead)
+
+#table(p)
+
+confint.default(model)
+
+#confusionMatrix(p_class, test$lead)
+
+library(caTools)
+colAUC(p,test$lead, plotROC = TRUE)
+
+```
+
+#Building a decision tree using state vote and population data
+```{r}
+# Classification Tree with rpart
+# grow tree
+whfit <- rpart(lead ~ `White Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+blfit <- rpart(lead ~ `Black Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+nafit <- rpart(lead ~ `Native American Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=10, cp=0))
+asfit <- rpart(lead ~ `Asian Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+pifit <- rpart(lead ~ `Pacific Islander Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+bifit <- rpart(lead ~ `2+ Races Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+lafit <- rpart(lead ~ `Latino`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+eufit <- rpart(lead ~ `White/Not Latino Perc`, method="class", data=stvoteracedata, control =rpart.control(minsplit =10,minbucket=5, cp=0))
+
+
+#printcp(fit) # display the results 
+#plotcp(fit) # visualize cross-validation results 
+#summary(whfit) # detailed summary of splits
+
+fancyRpartPlot(whfit, main = "Classification tree: Candidates & White Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(blfit, main = "Classification tree: Candidates & Black Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(nafit, main = "Classification tree: Candidates & Native Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(asfit, main = "Classification tree: Candidates & Asian Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(pifit, main = "Classification tree: Candidates & Pacific Islander Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(bifit, main = "Classification tree: Candidates & Multiracial Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(lafit, main = "Classification tree: Candidates & Latino Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+fancyRpartPlot(eufit, main = "Classification tree: Candidates & White (Non-Latino) Population \n \n", palettes=c("Reds", "Blues"), sub = '(State Level)')
+
+```
+```{r}
+# Classification Tree with rpart
+
+# grow tree
+whfitcty <- rpart(lead ~ `White Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =10,minbucket=15, cp=0))
+blfitcty <- rpart(lead ~ `Black Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =10,minbucket=15, cp=0))
+nafitcty <- rpart(lead ~ `Native American Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =5,minbucket=10, cp=0))
+asfitcty <- rpart(lead ~ `Asian Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =5,minbucket=30, cp=0))
+pifitcty <- rpart(lead ~ `Pacific Islander Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =10,minbucket=10, cp=0))
+bifitcty <- rpart(lead ~ `2+ Races Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =15,minbucket=10, cp=0))
+lafitcty <- rpart(lead ~ `Latino`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =10,minbucket=20, cp=0))
+eufitcty <- rpart(lead ~ `White/Not Latino Perc`, method="class", data=rcsonlyrace, control =rpart.control(minsplit =10,minbucket=30, cp=0))
+
+
+#printcp(fit) # display the results 
+#plotcp(fit) # visualize cross-validation results 
+#summary(whfit) # detailed summary of splits
+
+fancyRpartPlot(whfitcty, main = "Classification tree: Candidates & White Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(blfitcty, main = "Classification tree: Candidates & Black Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(nafitcty, main = "Classification tree: Candidates & Native Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(asfitcty, main = "Classification tree: Candidates & Asian Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(pifitcty, main = "Classification tree: Candidates & Pacific Islander Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(bifitcty, main = "Classification tree: Candidates & Multiracial Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(lafitcty, main = "Classification tree: Candidates & Latino Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+fancyRpartPlot(eufitcty, main = "Classification tree: Candidates & White (Non-Latino) Population \n \n", palettes=c("Reds", "Blues"), sub = '(County Level)')
+
+```
+
+
+#Exporting my pre-processed dataframes to excel
+```{r}
+write.xlsx(x = widevote, file = "widevote.xlsx", sheetName = "TestSheet", row.names = FALSE)
+write.xlsx(x = race, file = "race.xlsx", sheetName = "TestSheet", row.names = FALSE)
+write.xlsx(x = eprace, file = "exitpollrace.xlsx", sheetName = "TestSheet", row.names = FALSE)
+```
+
+
